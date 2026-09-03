@@ -9,10 +9,8 @@
 
 ## 1. GENERAL INFORMATION & DELIVERABLE LINKS
 
-* **🔗 Live Demo URL:** https://vku-field-survey.pages.dev *(cập nhật sau khi deploy Pages)*
-* **💻 GitHub Repository:** [https://github.com/username/vku-field-survey] *(cập nhật link thực tế)*
-* **🎥 Video Demo (Optional):** [https://youtu.be/xxx]
-
+* **🔗 Live Demo URL:** https://vku-field-survey-c2z.pages.dev/
+* **💻 GitHub Repository:** https://github.com/quoctrilee/project1.git
 ---
 
 ## 2. FEATURE IMPLEMENTATION CHECKLIST
@@ -156,5 +154,3 @@ Tất cả 3 đều gọi cùng `processSyncQueue()`, đảm bảo hoạt độn
 - Worker trả thông điệp lỗi cụ thể trong HTTP 400 body, hiển thị toast cho người dùng
 
 ---
-
-*Báo cáo này được tạo dựa trên source code thực tế của project. Cần bổ sung: tên sinh viên, MSSV, link GitHub public, link Pages đã deploy, link video demo, và 4 ảnh màn hình vào các mục tương ứng.*
