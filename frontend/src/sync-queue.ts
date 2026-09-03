@@ -1,6 +1,6 @@
 import { getAllPending, updateSurveyStatus } from './db';
 
-export const API_URL = 'https://vku-field-survey-api.example.workers.dev/api/surveys';
+export const API_URL = `${import.meta.env.VITE_API_URL ?? 'https://vku-field-survey-api.example.workers.dev'}/api/surveys`;
 export async function processSyncQueue(onChange?: () => void) {
   for (const record of await getAllPending()) {
     try {

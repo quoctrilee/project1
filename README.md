@@ -29,16 +29,28 @@ npm run typecheck
 npm run dev
 ```
 
-Update `frontend/src/sync-queue.ts` `API_URL` with the deployed Worker URL before a real sync test. The browser app uses `navigator.onLine` only as its web fallback; native builds use Capacitor Network.
+Set `VITE_API_URL` to the deployed Worker origin before a real sync test, for example `VITE_API_URL=https://your-worker.workers.dev npm run build`. The browser app uses `navigator.onLine` only as its web fallback; native builds use Capacitor Network.
 
 ## Deploy
+
+### Cloudflare Pages dashboard
+
+Create a **Pages** project connected to this GitHub repository and use these exact settings:
+
+- Root directory: `/`
+- Framework preset: `Vite` (or `None`)
+- Build command: `npm run build`
+- Build output directory: `frontend/dist`
+- Deploy command: leave empty
+
+Do not use `npx wrangler deploy` in the Pages deploy command. That command deploys a Worker and causes Wrangler to generate a Worker/Vite configuration. For manual CLI deployment, use the Pages command below instead.
 
 ```sh
 npm run deploy:worker
 npm run deploy:pages
 ```
 
-Cloudflare login is required (`npx wrangler login`). Pages supplies HTTPS, required for Service Worker operation.
+Cloudflare login is required for CLI deployment (`npx wrangler login`). Pages supplies HTTPS, required for Service Worker operation. Deploy the Worker as a separate Worker project using `worker/wrangler.toml`; do not point the Pages project at that file.
 
 ## Android APK
 
