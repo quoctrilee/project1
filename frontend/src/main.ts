@@ -1,0 +1,24 @@
+import { addSurvey, deleteDraft, getAllSurveys, getDraft, saveDraft, type Category } from './db';
+import { getCurrentLocation, getNetworkStatus, listenNetworkChanges, takePhoto } from './capacitor-bridge';
+import { initSyncListeners, processSyncQueue } from './sync-queue';
+import { registerServiceWorker } from './sw-register';
+
+const form = document.querySelector<HTMLFormElement>('#survey-form')!;
+const steps = Array.from(document.querySelectorAll<HTMLElement>('.step'));
+const network = document.querySelector<HTMLElement>('#network')!;
+const queueList = document.querySelector<HTMLElement>('#queue-list')!;
+const draftStatus = document.querySelector<HTMLElement>('#draft-status')!;
+let currentStep = 1; let photoBase64: string | undefined; let saveTimer: number | undefined;
+const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+function renderStep() { steps.forEach((step, index) => step.classList.toggle('active', index === currentStep - 1)); document.querySelector('#progress-label')!.textContent = `STEP ${currentStep} OF 4`; (document.querySelector('#progress-bar') as HTMLElement).style.width = `${currentStep * 25}%`; (document.querySelector('#back-button') as HTMLButtonElement).disabled = currentStep === 1; document.querySelector('#next-button')!.innerHTML = currentStep === 4 ? 'Submit <span>✓</span>' : 'Next <span>→</span>'; }
+function draftData() { return { building: field('building').value, floor: field('floor').value, room: field('room').value, category: field('category').value as Category | '', rating: Number(field('rating')?.value ?? 0), notes: field('notes').value, photoBase64, updatedAt: Date.now() }; }
+function scheduleDraft() { window.clearTimeout(saveTimer); saveTimer = window.setTimeout(async () => { await saveDraft(draftData()); draftStatus.textContent = 'Draft saved locally'; }, 700); }
+async function renderQueue() { const records = await getAllSurveys(); document.querySelector('#queue-count')!.textContent = `${records.length} record${records.length === 1 ? '' : 's'}`; queueList.innerHTML = records.length ? records.sort((a,b) => b.timestamp-a.timestamp).map(record => `<article class="record"><code>${record.uuid.slice(0, 8)}...</code><time>${new Date(record.timestamp).toLocaleString()}</time><span class="status ${record.status === 'SYNCED' ? 'synced' : ''}">${record.status}</span></article>`).join('') : '<p class="empty">No inspections submitted yet.</p>'; }
+async function updateNetwork(connected: boolean) { network.textContent = connected ? '● ONLINE' : '○ OFFLINE'; network.classList.toggle('offline', !connected); }
+async function submit() { if (!form.reportValidity()) return; draftStatus.textContent = 'Capturing location...'; const location = await getCurrentLocation(); await addSurvey({ ...draftData(), category: field('category').value as Category, rating: Number(field('rating').value), ...location }); await deleteDraft(); document.querySelector('#location-status')!.textContent = location.latitude === null ? 'Location unavailable; submitted without coordinates.' : 'Location captured with this inspection.'; draftStatus.textContent = 'Saved to local queue'; await renderQueue(); void processSyncQueue(renderQueue); }
+document.querySelector('#next-button')!.addEventListener('click', () => { if (currentStep === 4) void submit(); else { if (!form.reportValidity()) return; currentStep++; renderStep(); scheduleDraft(); } });
+document.querySelector('#back-button')!.addEventListener('click', () => { if (currentStep > 1) { currentStep--; renderStep(); scheduleDraft(); } });
+form.addEventListener('input', scheduleDraft);
+document.querySelector('#photo-button')!.addEventListener('click', async () => { const image = await takePhoto(); if (image) { photoBase64 = image; document.querySelector('#photo-preview')!.innerHTML = `<img src="data:image/jpeg;base64,${image}" alt="Inspection evidence">`; scheduleDraft(); } });
+async function boot() { const draft = await getDraft(); if (draft) { const draftFields: Array<'building' | 'floor' | 'room' | 'category' | 'notes'> = ['building','floor','room','category','notes']; for (const name of draftFields) field(name).value = draft[name]; if (draft.rating) (field('rating') as HTMLInputElement).value = String(draft.rating); photoBase64 = draft.photoBase64; } await renderQueue(); await updateNetwork((await getNetworkStatus()).connected); await listenNetworkChanges(connected => { void updateNetwork(connected); if (connected) void processSyncQueue(renderQueue); }); const registration = await registerServiceWorker(); if (registration) navigator.serviceWorker.addEventListener('message', event => { if (event.data?.type === 'TRIGGER_SYNC') void processSyncQueue(renderQueue); }); await initSyncListeners(registration, renderQueue); }
+renderStep(); void boot();
