@@ -8,7 +8,8 @@
     "build": "vite build --config frontend/vite.config.ts",
     "typecheck": "tsc -p frontend/tsconfig.json --noEmit && tsc -p worker/tsconfig.json --noEmit",
     "deploy:worker": "wrangler deploy --config worker/wrangler.toml",
-    "deploy:pages": "npm run build && wrangler pages deploy frontend/dist --project-name=vku-field-survey"
+    "deploy:pages": "npm run build && wrangler pages deploy frontend/dist --project-name=vku-field-survey",
+    "deploy:pages:ci": "wrangler pages deploy frontend/dist --project-name=vku-field-survey"
   },
   "dependencies": {
     "@capacitor/camera": "^7.0.0",

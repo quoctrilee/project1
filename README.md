@@ -41,9 +41,9 @@ Create a **Pages** project connected to this GitHub repository and use these exa
 - Framework preset: `Vite` (or `None`)
 - Build command: `npm run build`
 - Build output directory: `frontend/dist`
-- Deploy command: leave empty
+- Deploy command: `npm run deploy:pages:ci`
 
-Do not use `npx wrangler deploy` in the Pages deploy command. That command deploys a Worker and causes Wrangler to generate a Worker/Vite configuration. For manual CLI deployment, use the Pages command below instead.
+Do not use `npx wrangler deploy` in the Pages deploy command. That command deploys a Worker and causes Wrangler to generate a Worker/Vite configuration. The `npm run deploy:pages:ci` command deploys the already-built `frontend/dist` folder as Pages. For manual CLI deployment, use the Pages command below instead.
 
 ```sh
 npm run deploy:worker
