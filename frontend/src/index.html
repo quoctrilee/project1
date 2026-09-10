@@ -151,7 +151,6 @@
       </div>
     </section>
 
-    <!-- ── Form Actions (sticky) ── -->
     <footer class="form-actions">
       <button type="button" class="btn-back" id="back-btn" disabled>← Quay lại</button>
       <span class="draft-status" id="draft-status">Sẵn sàng</span>
@@ -181,6 +180,19 @@
   </section>
 
 </main>
+
+<!-- ── View Record Modal ── -->
+<div class="modal-overlay" id="view-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modal-title">Chi tiết bản ghi</h2>
+      <button type="button" class="modal-close" id="view-modal-close" aria-label="Đóng">&times;</button>
+    </div>
+    <div class="modal-body" id="view-modal-body">
+      <!-- Content injected by JavaScript -->
+    </div>
+  </div>
+</div>
 
 <script type="module" src="main.ts"></script>
 </body>

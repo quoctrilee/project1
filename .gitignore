@@ -14,3 +14,4 @@ frontend/android/local.properties
 frontend/android/*.iml
 frontend/android/.cxx/
 frontend/android/captures/
+.vscode/

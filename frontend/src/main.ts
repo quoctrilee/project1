@@ -1,4 +1,4 @@
-﻿import {
+import {
   addSurvey,
   deleteDraft,
   deleteSurvey,
@@ -7,6 +7,7 @@
   resetSyncAttempts,
   saveDraft,
   type Category,
+  type Survey,
 } from './db';
 import {
   getCurrentLocation,
@@ -41,6 +42,18 @@ const installBanner   = document.querySelector<HTMLElement>('#install-banner')!;
 const installBtn      = document.querySelector<HTMLButtonElement>('#install-btn')!;
 const installDismiss  = document.querySelector<HTMLButtonElement>('#install-dismiss')!;
 const toastContainer  = document.querySelector<HTMLElement>('#toast-container')!;
+const viewModal       = document.querySelector<HTMLElement>('#view-modal');
+const viewModalClose  = document.querySelector<HTMLButtonElement>('#view-modal-close');
+const viewModalBody   = document.querySelector<HTMLElement>('#view-modal-body');
+
+// Check modal elements
+if (!viewModal || !viewModalClose || !viewModalBody) {
+  console.error('[Modal] Modal elements not found!', {
+    viewModal: !!viewModal,
+    viewModalClose: !!viewModalClose,
+    viewModalBody: !!viewModalBody
+  });
+}
 
 // State
 let currentStep = 1;
@@ -58,6 +71,248 @@ const STAR_LABELS: Record<number, string> = {
 };
 
 const MAX_VISIBLE_ATTEMPTS = 5;
+
+// Record detail modal
+function openRecordDetailModal(record: Survey) {
+  if (!viewModal || !viewModalBody) {
+    console.error('[Modal] Modal elements not available!');
+    showToast('Không thể mở chi tiết bản ghi', 'error');
+    return;
+  }
+  
+  const categoryMap: Record<string, string> = {
+    Hardware:   'Phần cứng (Hardware)',
+    Projector:  'Máy chiếu (Projector)',
+    AC:         'Điều hòa (AC)',
+    Electrical: 'Điện (Electrical)',
+    Furniture:  'Nội thất (Furniture)',
+  };
+
+  const stars = '★'.repeat(record.rating) + '☆'.repeat(5 - record.rating);
+  const isSynced = record.status === 'SYNCED';
+  const isBlocked = !isSynced && (record.syncAttempts ?? 0) >= MAX_VISIBLE_ATTEMPTS;
+  
+  const statusClass = isSynced ? 'synced' : isBlocked ? 'failed' : 'pending';
+  const statusText = isSynced ? 'ĐÃ ĐỒNG BỘ' : isBlocked ? 'THẤT BẠI' : 'CHỜ ĐỒNG BỘ';
+  const statusDot = '●';
+
+  const photoSection = record.photoBase64 
+    ? `<div class="detail-photo-container">
+         <img src="data:image/jpeg;base64,${record.photoBase64}" 
+              alt="Ảnh bằng chứng" 
+              class="detail-photo"
+              title="Nhấn để xem ảnh phóng to"
+              tabindex="0">
+         <p style="font-size:12px;color:var(--text-muted);margin-top:6px;text-align:center;">🔍 Nhấn vào ảnh để xem kích thước đầy đủ</p>
+       </div>`
+    : `<div class="detail-photo-empty">
+         <span class="detail-photo-empty-icon">📷</span>
+         Không có ảnh bằng chứng
+       </div>`;
+
+  const locationSection = record.latitude && record.longitude
+    ? `<div class="detail-item">
+         <span class="detail-label">Tọa độ GPS</span>
+         <span class="detail-value">${record.latitude.toFixed(6)}, ${record.longitude.toFixed(6)}</span>
+         <a href="https://www.google.com/maps?q=${record.latitude},${record.longitude}" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="detail-map-link">
+           📍 Mở Google Maps
+         </a>
+       </div>
+       <div class="detail-item">
+         <span class="detail-label">Độ chính xác GPS</span>
+         <span class="detail-value">${record.locationAccuracy ? `±${record.locationAccuracy.toFixed(1)}m` : 'N/A'}</span>
+       </div>`
+    : `<div class="detail-item" style="grid-column: 1/-1;">
+         <span class="detail-label">Tọa độ GPS</span>
+         <span class="detail-value" style="color: var(--text-muted);">Không có dữ liệu GPS (được ghi nhận trong nhà hoặc không có quyền)</span>
+       </div>`;
+
+  const syncInfo = !isSynced 
+    ? `<div class="detail-item">
+         <span class="detail-label">Số lần thử đồng bộ</span>
+         <span class="detail-value">${record.syncAttempts ?? 0}/${MAX_VISIBLE_ATTEMPTS}</span>
+       </div>`
+    : '';
+
+  viewModalBody.innerHTML = `
+    <div class="detail-section">
+      <h3>Thông tin vị trí</h3>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Tòa nhà</span>
+          <span class="detail-value">Tòa ${record.building}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Tầng</span>
+          <span class="detail-value">Tầng ${record.floor}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Phòng</span>
+          <span class="detail-value">Phòng ${record.room}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Thông tin khảo sát</h3>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Danh mục</span>
+          <span class="detail-value">${categoryMap[record.category] ?? record.category}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Đánh giá</span>
+          <span class="detail-value rating">${stars} <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">(${record.rating}/5 sao)</span></span>
+        </div>
+        <div class="detail-item" style="grid-column: 1/-1;">
+          <span class="detail-label">Ghi chú</span>
+          <span class="detail-value notes">${record.notes || 'Không có ghi chú'}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Ảnh bằng chứng</h3>
+      ${photoSection}
+    </div>
+
+    <div class="detail-section">
+      <h3>Thông tin kỹ thuật</h3>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">UUID</span>
+          <span class="detail-value uuid">${record.uuid}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Thời gian ghi nhận</span>
+          <span class="detail-value">${new Date(record.timestamp).toLocaleString('vi-VN')}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Trạng thái đồng bộ</span>
+          <span class="detail-status-badge ${statusClass}">${statusDot} ${statusText}</span>
+        </div>
+        ${syncInfo}
+        ${locationSection}
+      </div>
+    </div>
+
+    <div class="detail-actions">
+      ${!isSynced && isBlocked ? `
+        <button type="button" class="detail-btn primary detail-action-retry" data-uuid="${record.uuid}">
+          ↻ Thử lại đồng bộ
+        </button>
+      ` : ''}
+      <button type="button" class="detail-btn secondary detail-action-export" data-uuid="${record.uuid}">
+        💾 Xuất JSON
+      </button>
+      <button type="button" class="detail-btn danger detail-action-delete" data-uuid="${record.uuid}">
+        🗑️ Xóa bản ghi
+      </button>
+    </div>
+  `;
+
+  viewModal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeRecordDetailModal() {
+  if (!viewModal) return;
+  viewModal.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// Modal action implementations
+async function retryRecordSync(uuid: string) {
+  await resetSyncAttempts(uuid);
+  closeRecordDetailModal();
+  showToast('Đang thử đồng bộ lại...', 'info');
+  await renderQueue();
+  void processSyncQueue(renderQueue, syncCallbacks);
+}
+
+async function exportRecordJSON(uuid: string) {
+  const records = await getAllSurveys();
+  const record = records.find(r => r.uuid === uuid);
+  if (!record) return;
+
+  const json = JSON.stringify(record, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `survey-${record.uuid.slice(0, 8)}-${Date.now()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Đã xuất bản ghi ra file JSON!', 'success');
+}
+
+async function deleteRecordFromModal(uuid: string) {
+  if (!confirm('Bạn có chắc muốn xóa bản ghi này không?')) return;
+  await deleteSurvey(uuid);
+  closeRecordDetailModal();
+  showToast('Đã xóa bản ghi.', 'info');
+  await renderQueue();
+}
+
+// Expose globals for backward compatibility
+(window as any).retryRecordSync = retryRecordSync;
+(window as any).exportRecordJSON = exportRecordJSON;
+(window as any).deleteRecordFromModal = deleteRecordFromModal;
+
+// Modal event delegation
+if (viewModalBody) {
+  viewModalBody.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const retryBtn = target.closest<HTMLButtonElement>('.detail-action-retry');
+    if (retryBtn) {
+      const uuid = retryBtn.dataset.uuid!;
+      void retryRecordSync(uuid);
+      return;
+    }
+    const exportBtn = target.closest<HTMLButtonElement>('.detail-action-export');
+    if (exportBtn) {
+      const uuid = exportBtn.dataset.uuid!;
+      void exportRecordJSON(uuid);
+      return;
+    }
+    const deleteBtn = target.closest<HTMLButtonElement>('.detail-action-delete');
+    if (deleteBtn) {
+      const uuid = deleteBtn.dataset.uuid!;
+      void deleteRecordFromModal(uuid);
+      return;
+    }
+    const photoImg = target.closest<HTMLImageElement>('.detail-photo');
+    if (photoImg) {
+      const w = window.open('');
+      if (w) {
+        w.document.write(`<title>Ảnh bằng chứng</title><body style="margin:0;background:#060d1f;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${photoImg.src}" style="max-width:100%;max-height:100vh;object-fit:contain;"></body>`);
+      }
+    }
+  });
+}
+
+// Modal close handlers
+if (viewModalClose) {
+  viewModalClose.addEventListener('click', closeRecordDetailModal);
+}
+
+if (viewModal) {
+  viewModal.addEventListener('click', (e) => {
+    if (e.target === viewModal) closeRecordDetailModal();
+  });
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && viewModal?.classList.contains('active')) {
+    closeRecordDetailModal();
+  }
+});
+
 
 // Toast
 function showToast(message: string, type: 'success' | 'error' | 'info' = 'info', duration = 3500) {
@@ -197,11 +452,11 @@ async function renderQueue() {
     const isSynced  = r.status === 'SYNCED';
     const isBlocked = !isSynced && (r.syncAttempts ?? 0) >= MAX_VISIBLE_ATTEMPTS;
     const categoryMap: Record<string, string> = {
-      Hardware:   'Phan cung (Hardware)',
-      Projector:  'May chieu (Projector)',
-      AC:         'Dieu hoa (AC)',
-      Electrical: 'Dien (Electrical)',
-      Furniture:  'Noi that (Furniture)',
+      Hardware:   'Phần cứng (Hardware)',
+      Projector:  'Máy chiếu (Projector)',
+      AC:         'Điều hòa (AC)',
+      Electrical: 'Điện (Electrical)',
+      Furniture:  'Nội thất (Furniture)',
     };
     const badge = isSynced
       ? '<span class="status-badge synced">SYNCED</span>'
@@ -209,22 +464,26 @@ async function renderQueue() {
         ? '<span class="status-badge failed">FAILED</span>'
         : '<span class="status-badge pending">PENDING</span>';
     const retryBtn = isBlocked
-      ? `<button class="record-retry" data-uuid="${r.uuid}" title="Thu lai" aria-label="Thu lai dong bo">&#8635;</button>`
+      ? `<button type="button" class="record-retry" data-uuid="${r.uuid}" title="Thử lại đồng bộ" aria-label="Thử lại đồng bộ">&#8635;</button>`
       : '';
     const attempts = !isSynced
       ? `<span class="record-attempts">${r.syncAttempts ?? 0}/${MAX_VISIBLE_ATTEMPTS}</span>`
       : '';
     return `
-      <div class="record-card${isBlocked ? ' blocked' : ''}" data-uuid="${r.uuid}">
+      <div class="record-card${isBlocked ? ' blocked' : ''}" 
+           data-uuid="${r.uuid}" 
+           role="button" 
+           tabindex="0" 
+           aria-label="Xem chi tiết bản ghi tại Tòa ${r.building} Tầng ${r.floor} Phòng ${r.room}">
         <div class="record-top">
           <div>
-            <div class="record-location">Toa ${r.building} &middot; Tang ${r.floor} &middot; P.${r.room}</div>
+            <div class="record-location">Tòa ${r.building} &middot; Tầng ${r.floor} &middot; P.${r.room}</div>
             <div class="record-category">${categoryMap[r.category] ?? r.category}</div>
           </div>
           <div class="record-actions">
             ${badge}
             ${retryBtn}
-            <button class="record-delete" data-uuid="${r.uuid}" title="Xoa ban ghi" aria-label="Xoa ban ghi">&times;</button>
+            <button type="button" class="record-delete" data-uuid="${r.uuid}" title="Xóa bản ghi" aria-label="Xóa bản ghi">&times;</button>
           </div>
         </div>
         <div class="record-meta">
@@ -232,17 +491,48 @@ async function renderQueue() {
           <span class="record-uuid">${r.uuid.slice(0, 8)}&hellip;</span>
           <span class="record-time">${new Date(r.timestamp).toLocaleString('vi-VN')}</span>
           ${attempts}
+          <span class="record-hint">Chi tiết &rarr;</span>
         </div>
       </div>`;
   }).join('');
+
+  // View detail handlers (click & keyboard)
+  queueList.querySelectorAll<HTMLElement>('.record-card').forEach((card) => {
+    const handleOpen = () => {
+      const uuid = card.dataset.uuid!;
+      const record = sorted.find(r => r.uuid === uuid);
+      if (record) {
+        openRecordDetailModal(record);
+      }
+    };
+
+    card.addEventListener('click', (e) => {
+      // Don't open modal if clicking on action buttons
+      if ((e.target as HTMLElement).closest('.record-delete, .record-retry')) {
+        return;
+      }
+      handleOpen();
+    });
+
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        if ((e.target as HTMLElement).closest('.record-delete, .record-retry')) {
+          return;
+        }
+        e.preventDefault();
+        handleOpen();
+      }
+    });
+  });
 
   // Delete handlers
   queueList.querySelectorAll<HTMLButtonElement>('.record-delete').forEach((btn) => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const uuid = btn.dataset.uuid!;
+      if (!confirm('Bạn có chắc muốn xóa bản ghi này?')) return;
       await deleteSurvey(uuid);
-      showToast('Da xoa ban ghi.', 'info');
+      showToast('Đã xóa bản ghi.', 'info');
       await renderQueue();
     });
   });
@@ -253,7 +543,7 @@ async function renderQueue() {
       e.stopPropagation();
       const uuid = btn.dataset.uuid!;
       await resetSyncAttempts(uuid);
-      showToast('Dang thu dong bo lai...', 'info');
+      showToast('Đang thử đồng bộ lại...', 'info');
       await renderQueue();
       void processSyncQueue(renderQueue, syncCallbacks);
     });
