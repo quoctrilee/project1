@@ -110,21 +110,16 @@ project1/
 > **Hướng dẫn:** Chụp và đính kèm 4 ảnh sau vào mục này.
 
 **Ảnh 1 — Form đa bước trên thiết bị / emulator**
-- Chụp màn hình bước 1 (Vị trí) với progress bar hiển thị "BƯỚC 1/4"
-- Cho thấy layout responsive trên mobile viewport
+![alt text](image.png)
 
 **Ảnh 2 — Trạng thái đồng bộ hàng đợi**
-- Chụp section "Hàng đợi đồng bộ" với ít nhất 1 bản ghi `PENDING_SYNC` và 1 bản `SYNCED`
-- Cho thấy badge màu, thông tin tòa/tầng/phòng, rating sao, thời gian
+![alt text](image-1.png)
 
 **Ảnh 3 — Offline mode (Airplane mode)**
-- Chụp màn hình pill "Ngoại tuyến" (màu đỏ/xám) và bản ghi đang ở `PENDING_SYNC`
-- Chứng minh form vẫn nộp được khi không có mạng
+![alt text](image-2.png)
 
 **Ảnh 4 — Service Worker & Manifest trong DevTools**
-- Chụp tab Application → Service Workers (status: Activated)
-- Chụp tab Application → Manifest (theme color, icon, display: standalone)
-- Hoặc: APK chạy trên thiết bị Android thực / Android Emulator
+![alt text](image-3.png)
 
 ---
 

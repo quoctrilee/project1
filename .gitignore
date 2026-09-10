@@ -1,7 +1,16 @@
 node_modules/
 frontend/dist/
-frontend/android/
 *.keystore
 android/keystore.properties
 .wrangler/
 .env*
+
+# Android build artifacts and generated files
+frontend/android/.gradle/
+frontend/android/.idea/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/local.properties
+frontend/android/*.iml
+frontend/android/.cxx/
+frontend/android/captures/
